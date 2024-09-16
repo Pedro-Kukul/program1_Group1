@@ -1,171 +1,248 @@
+import 'dart:convert';
 import 'dart:io';
 
+//HELPER functions
+Future<void> myPrint(String output) async {
+  stdout.write(output);
+}
+
+//REGEX
+final halt = RegExp(r"^HALT$");
+
+final r_off = RegExp(r"^OFF$");
+final r_on = RegExp(r"^ON$");
+final r_sqr = RegExp(r"^sqr$");
+final r_tri = RegExp(r"^tri$");
+final r_xyChain = RegExp(r"^(([a-f][1-6]),){1,2}([a-f][1-6])$");
+final r_sqrXY = RegExp(r"^(([a-f][1-6]),)([a-f][1-6])$");
+final r_triXY = RegExp(r"^(([a-f][1-6]),){2}([a-f][1-6])$");
+final r_delim = RegExp(r"^-$");
+
+//MAIN
 void main() {
+  //Core Programming Loop
   while (true) {
-    // Display the BNF Grammar
-    displayGrammar();
+    //Printing the grammar
+    myPrint("\n\n");
+    myPrint("<proc> ->  ON <body> OFF\n");
+    myPrint("<body> ->  <line>\n");
+    myPrint("          |<line> - <instructions>\n");
+    myPrint("<line> -> sqr <xy>,<xy>\n");
+    myPrint("          | <xy>,<xy>,<xy>\n");
+    myPrint("<xy>   -> <x><y>\n");
+    myPrint("<x>    -> a | b | c | d | e | f\n");
+    myPrint("<y>    -> 1 | 2 | 3 | 4 | 5 | 6\n\n");
 
-    // Accept user input
-    stdout.write("Enter the input string (or type 'HALT' to stop): ");
-    String input = stdin.readLineSync() ?? '';
+    //Prompting the user
+    stdout.write("Enter your sentence: ");
+    var userInput = stdin.readLineSync(encoding: utf8);
 
-    if (input.toUpperCase() == 'HALT') {
-      print("Program terminated.");
+    //Checking the input from the user
+    if (userInput != null && halt.hasMatch(userInput)) {
       break;
+    } else if (userInput != null) {
+      LanguageRecognizer(userInput);
     }
-
-    // Attempt rightmost derivation
-    if (checkForErrors(input)) {
-      print("String recognized successfully!");
-      drawParseTree(input);
-    } else {
-      print("Error: The string is not recognized by the grammar.");
-    }
-
-    print("\n"); // Add a newline for readability between iterations
   }
 }
 
-// Function to display the BNF grammar
-void displayGrammar() {
-  print('''
-BNF Grammar:
-<proc> → ON <body> OFF
-<instructions> → <line>
-               | <line> - <instructions>
-<line> → sqr <xy>,<xy>
-       | tri <xy>,<xy>,<xy>
-<xy> → <x><y>
-<x> → a | b | c | d | e | f
-<y> → 1 | 2 | 3 | 4 | 5 | 6
-  ''');
-}
+//Language Recognizer
+void LanguageRecognizer(String input) {
+  //removing all the trailing white spaces
+  input = input.trim();
 
-// Function to check for errors in the input string
-bool checkForErrors(String input) {
-  // Step 1: Check for start and end markers
-  if (!input.startsWith('ON') || !input.endsWith('OFF')) {
-    print("Error: Input must start with 'ON' and end with 'OFF'.");
-    return false;
+  //tokenizing the string
+  List<String> tokenList = input.split(RegExp(r"\s+"));
+  List<String> checkedList = [];
+
+  //checking if OFF is correct
+  if (r_off.hasMatch(tokenList.last)) {
+    //moving the valid token
+    checkedList.insert(0, tokenList.removeLast());
+  } else {
+    //there is an error
+    ReportError(checkedList, tokenList, "OFF");
+    return;
   }
 
-  // Step 2: Split the input string into the main parts (after removing 'ON' and 'OFF')
-  String body = input.substring(2, input.length - 3).trim(); // Remove 'ON ' and ' OFF'
+  //checking if the next token is a sqr line or tri line
+  while (true) {
+    if (r_xyChain.hasMatch(tokenList.last)) {
+      //moving the valid token
+      checkedList.insert(0, tokenList.removeLast());
 
-  // Step 3: Define valid shapes and coordinate patterns
-  final shapePattern = RegExp(r'(sqr [a-f][1-6],[a-f][1-6]|tri [a-f][1-6],[a-f][1-6],[a-f][1-6])');
-  final xyPattern = RegExp(r'[a-f][1-6]');
-  final shapeCheck = RegExp(r'(sqr|tri)');
+      //checking if the rest of the line is correct
+      if (r_sqr.hasMatch(tokenList.last) || r_tri.hasMatch(tokenList.last)) {
+        //moving the valid token
+        checkedList.insert(0, tokenList.removeLast());
 
-  // Step 4: Split instructions by "-"
-  List<String> instructions = body.split(' - ');
+        if (tokenList.length == 1) {
+          //stopping the loop to validate the expected ON token
+          break;
+        } else if (r_delim.hasMatch(tokenList.last)) {
+          //moving the valid token
+          checkedList.insert(0, tokenList.removeLast());
 
-  // Track seen instructions to check for duplicates
-  Set<String> seenInstructions = {};
-
-  for (String instruction in instructions) {
-    // Check for duplicate instructions
-    if (seenInstructions.contains(instruction)) {
-      print("Error: Duplicate instruction '$instruction' found.");
-      return false;
-    }
-    seenInstructions.add(instruction);
-
-    // Check each instruction part for shape validity
-    if (!shapePattern.hasMatch(instruction)) {
-      // Error checking for invalid shapes
-      if (!shapeCheck.hasMatch(instruction)) {
-        print("Error: Shape '${instruction.split(' ')[0]}' is not valid.");
-        return false;
+          //checking the expected next line
+          continue;
+        } else {
+          //there is an error
+          ReportError(checkedList, tokenList, "- or ON");
+          return;
+        }
+      } else {
+        //there is an error with the sqr or tri
+        if (r_triXY.hasMatch(checkedList[0])) {
+          ReportError(checkedList, tokenList, "tri");
+        } else if (r_sqrXY.hasMatch(checkedList[0])) {
+          ReportError(checkedList, tokenList, "sqr");
+        }
+        return;
       }
+    } else {
+      //there is an error in the xy chain
 
-      // Check for invalid coordinates
-      var tokens = instruction.split(RegExp(r'[ ,]')).skip(1); // Skip the shape name
-      for (var token in tokens) {
-        if (!xyPattern.hasMatch(token)) {
-          // Invalid coordinate format or value
-          if (RegExp(r'[^a-f]').hasMatch(token[0])) {
-            print("Error: ${token} contains an error – variable '${token[0]}' is not valid.");
-          } else if (RegExp(r'[^1-6]').hasMatch(token[1])) {
-            print("Error: ${token} contains the unrecognized value '${token[1]}'.");
+      //removing the error token
+      String wrongToken = tokenList.removeLast();
+
+      //decomposing the token
+      List<String> itemizedToken = wrongToken.split("");
+      List<String> iCheckedToken = [];
+
+      //looping through the list from back to front
+      while (true) {
+        //First check for the Y
+        if (RegExp(r"[1-6]").hasMatch(itemizedToken.last)) {
+          //move the token
+          iCheckedToken.insert(0, itemizedToken.removeLast());
+
+          //check for the X
+          if (RegExp(r"[a-f]").hasMatch(itemizedToken.last)) {
+            //move the token
+            iCheckedToken.insert(0, itemizedToken.removeLast());
+
+            //check if we have a complete line
+            if (iCheckedToken.length == 2 || iCheckedToken.length == 5) {
+              if (RegExp(r",").hasMatch(itemizedToken.last)) {
+                //move the token
+                iCheckedToken.insert(0, itemizedToken.removeLast());
+                continue;
+              } else {
+                //incorrect delim
+                ReportXYChainError(
+                    checkedList, tokenList, ",", itemizedToken, iCheckedToken);
+                return;
+              }
+            } else {
+              //addition token in the xy chain
+
+              ReportXYChainError(checkedList, tokenList, "whitespace",
+                  itemizedToken, iCheckedToken);
+              return;
+            }
+          } else {
+            //incorrect x
+            ReportXYChainError(checkedList, tokenList, "a | b | c | d | e | f",
+                itemizedToken, iCheckedToken);
+            return;
           }
-          return false;
+        } else {
+          //incorrect y
+          ReportXYChainError(checkedList, tokenList, "1 | 2 | 3 | 4 | 5 | 6",
+              itemizedToken, iCheckedToken);
+          return;
         }
       }
     }
   }
 
-  // Step 5: If no errors were found
-  return true;
-}
-
-// Function to draw the parse tree for the recognized string
-void drawParseTree(String input) {
-  print("Parse Tree:");
-
-  // Split the input string to separate ON, OFF, and the instructions
-  if (input.startsWith('ON') && input.endsWith('OFF')) {
-    print("<proc>");
-    print(" ├── ON");
-
-    // Remove "ON" and "OFF" to isolate the body
-    String body = input.substring(3, input.length - 3).trim();
-    drawInstructions(body);
-
-    print(" └── OFF");
+  //checking if the ON is correct
+  if (r_on.hasMatch(tokenList.last)) {
+    //moving the valid token
+    checkedList.insert(0, tokenList.removeLast());
   } else {
-    print("Error: Invalid structure.");
+    //there is an error
+    ReportError(checkedList, tokenList, "ON");
+    return;
   }
+
+  myPrint("\n\nValid Sentence\n\n");
 }
 
-// Helper function to draw instructions
-void drawInstructions(String instructions) {
-  print(" ├── <body>");
-  print(" │    ├── <instructions>");
+void ReportError(List<String> checked, List<String> input, String expected) {
+  //grabbing the error token
+  String errorToken = input.removeLast();
 
-  // Split the instructions on " - " to handle multiple lines
-  List<String> lines = instructions.split(' - ');
+  String whiteSpace = "";
 
-  for (int i = 0; i < lines.length; i++) {
-    drawLine(lines[i]);
-
-    // For the last line, don't print a '-' node
-    if (i < lines.length - 1) {
-      print(" │    ├── -");
+  //padding the whitespace before the error marker
+  for (int i = 0; i < input.length; i++) {
+    for (int j = 0; j < input[i].length; j++) {
+      whiteSpace += " ";
     }
+    whiteSpace += " ";
   }
+
+  //creating the error marker
+  for (int i = 0; i < errorToken.length; i++) {
+    whiteSpace += "^";
+  }
+
+  //reporting the error
+  myPrint("\n");
+  for (int i = 0; i < input.length; i++) {
+    myPrint("${input[i]} ");
+  }
+  myPrint("${errorToken} ");
+  for (int i = 0; i < checked.length; i++) {
+    myPrint("${checked[i]} ");
+  }
+  myPrint("\n${whiteSpace}\n");
+  myPrint(
+      "Syntax Error: expected \"${expected}\"; but got \"${errorToken}\" instead\n");
 }
 
-// Helper function to draw a single line (sqr or tri)
-void drawLine(String line) {
-  if (line.startsWith('sqr')) {
-    print(" │    ├── <line> (sqr)");
-    // Extract the coordinates
-    String coords = line.substring(4);
-    List<String> xy = coords.split(',');
+void ReportXYChainError(List<String> checked, List<String> input,
+    String expected, List<String> onTokenInput, List<String> onTokenChecked) {
+  //reconstruct the errorToken and creating a error marker for the said errorSubToken
+  String errorSubToken = onTokenInput.removeLast();
 
-    drawXY(xy[0].trim(), 1); // First xy
-    drawXY(xy[1].trim(), 2); // Second xy
-  } else if (line.startsWith('tri')) {
-    print(" │    ├── <line> (tri)");
-    // Extract the coordinates
-    String coords = line.substring(4);
-    List<String> xy = coords.split(',');
+  String reconstructedToken = "";
+  String subTokenErrorMarker = "";
 
-    drawXY(xy[0].trim(), 1); // First xy
-    drawXY(xy[1].trim(), 2); // Second xy
-    drawXY(xy[2].trim(), 3); // Third xy
-  } else {
-    print("Error: Invalid line structure.");
+  for (int i = 0; i < onTokenInput.length; i++) {
+    reconstructedToken += onTokenInput[i];
+    subTokenErrorMarker += " ";
   }
-}
 
-// Helper function to draw the <xy> for each coordinate
-void drawXY(String xy, int index) {
-  String x = xy[0];
-  String y = xy[1];
+  reconstructedToken += errorSubToken;
+  subTokenErrorMarker += "^";
 
-  print(" │    │    ├── <xy> $index");
-  print(" │    │    │    ├── <x> $x");
-  print(" │    │    │    └── <y> $y");
+  for (int i = 0; i < onTokenChecked.length; i++) {
+    reconstructedToken += onTokenChecked[i];
+    subTokenErrorMarker += " ";
+  }
+
+  //padding the whitespace before the error marker
+  String whiteSpace = "";
+
+  for (int i = 0; i < input.length; i++) {
+    for (int j = 0; j < input[i].length; j++) {
+      whiteSpace += " ";
+    }
+    whiteSpace += " ";
+  }
+
+  //reporting the error
+  myPrint("\n");
+  for (int i = 0; i < input.length; i++) {
+    myPrint("${input[i]} ");
+  }
+  myPrint("${reconstructedToken} ");
+  for (int i = 0; i < checked.length; i++) {
+    myPrint("${checked[i]} ");
+  }
+  myPrint("\n${whiteSpace}${subTokenErrorMarker}\n");
+  myPrint(
+      "Syntax Error: expected \"${expected}\"; but got \"${errorSubToken}\" instead\n");
 }
