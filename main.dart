@@ -10,8 +10,6 @@ final r_tri = RegExp(r"^tri$", caseSensitive: false);
 final r_xyChain = RegExp(r"^([a-f][1-6]),([a-f][1-6])(,([a-f][1-6]))?$");
 final r_delim = RegExp(r"^-$");
 
-List<String> derivationSteps = [];
-
 // Helper function for printing
 Future<void> myPrint(String output) async {
   stdout.write(output);
@@ -59,7 +57,9 @@ void displayGrammar() {
   }
 }
 
-// Rightmost derivation function
+List<String> derivationSteps = [];
+
+// Rightmost derivation functionA
 bool rightmostDerivation(String input) {
   derivationSteps.clear();
 
