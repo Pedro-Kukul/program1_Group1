@@ -26,7 +26,7 @@ void main() {
   while (true) {
     myPrint('-' * stdout.terminalColumns);
     displayGrammar();
-    String? userInput = myInput("Enter your : ");
+    String? userInput = myInput("Enter your sentence: ");
 
     if (userInput != null && halt.hasMatch(userInput)) {
       break;
@@ -57,25 +57,122 @@ void displayGrammar() {
   }
 }
 
-List<String> derviationSteps() {}
+List<String> derivationSteps = [];
+
+// Rightmost derivation functionA
+bool rightmostDerivation(String input) {
+  derivationSteps.clear();
+
+  try {
+    // Trim and split the input
+    input = input.trim();
+    List<String> tokenList = input.split(RegExp(r"\s*[,]\s*|\s+"));
+
+    if (!r_on.hasMatch(tokenList.first)) {
+      throw ("'ON' is missing.");
+    }
+    if (!r_off.hasMatch(tokenList.last)) {
+      throw ("'OFF' is missing.");
+    }
+
+    // Remove ON and OFF from the token list
+    tokenList.removeAt(0); // Remove 'ON'
+    tokenList.removeLast(); // Remove 'OFF'
+
+    // Start derivation
+    derivationSteps.add("ON <instructions> OFF");
+    if (!processInstructions(tokenList)) {
+      return false;
+    }
+  } catch (e) {
+    print('Error: $e');
+    return false;
+  }
+
+  return true;
+}
+
+// Process instructions recursively
+bool processInstructions(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
+
+  // Check if the instruction contains multiple lines
+  if (tokenList.contains('-')) {
+    int index = tokenList.indexOf('-');
+    List<String> firstPart = tokenList.sublist(0, index);
+    List<String> secondPart = tokenList.sublist(index + 1);
+
+    // Derive the rightmost instruction first
+    derivationSteps.add("<line> - <line>");
+    if (!processInstructions(secondPart)) return false;
+    if (!processLine(firstPart)) return false;
+  } else {
+    // Single instruction case
+    derivationSteps.add("<line>");
+    if (!processLine(tokenList)) return false;
+  }
+
+  return true;
+}
+
+// Process a single line
+bool processLine(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
+
+  // Check for 'sqr' or 'tri'
+  if (r_sqr.hasMatch(tokenList.first)) {
+    if (tokenList.length == 3 &&
+        r_xyChain.hasMatch(tokenList.sublist(1).join(','))) {
+      derivationSteps.add("sqr <xy>,<xy>");
+      String xyChain = tokenList.sublist(1).join(',');
+      processXYChain(xyChain);
+    } else {
+      reportError([], tokenList, "valid 'sqr' line");
+      return false;
+    }
+  } else if (r_tri.hasMatch(tokenList.first)) {
+    if (tokenList.length == 4 &&
+        r_xyChain.hasMatch(tokenList.sublist(1).join(','))) {
+      derivationSteps.add("tri <xy>,<xy>,<xy>");
+      String xyChain = tokenList.sublist(1).join(',');
+      processXYChain(xyChain);
+    } else {
+      reportError([], tokenList, "valid 'tri' line");
+      return false;
+    }
+  } else {
+    reportShapeError([], tokenList);
+    return false;
+  }
+
+  return true;
+}
+
+// Process XY chain
+void processXYChain(String xyChain) {
+  var xyList = xyChain.split(',');
+  for (var xy in xyList.reversed) {
+    derivationSteps.add("$xy");
+  }
+}
 
 // Show derivation steps
-void showDerivation(List<String> derivation) {
+void showDerivation(String input) {
   myPrint("Derivation Steps for: $input\n");
 
   // First item for the counter should be blank, then <proc>
-  String firstLine = derivation.isNotEmpty ? derivation[0] : '';
+  String firstLine = derivationSteps.isNotEmpty ? derivationSteps[0] : '';
 
   // Print the initial step with padding
   print(
       '${' '.padRight(5)} ${'<proc>'.padRight(15)} ${'➝'.padRight(15)} $firstLine');
 
   // Display each derivation step
-  for (int i = 1; i < derivation.length; i++) {
+  for (int i = 1; i < derivationSteps.length; i++) {
     String stepNumber = (i + 1).toString().padLeft(2, '0');
-    String nextDerivation = derivation[i];
+    String derivation = derivationSteps[i];
     print(
-        '${stepNumber.padRight(5)} ${' '.padRight(15)} ${'➝'.padRight(15)} $nextDerivation');
+        '${stepNumber.padRight(5)} ${' '.padRight(15)} ${'➝'.padRight(15)} $derivation');
   }
 }
 
