@@ -257,6 +257,36 @@ void showDerivation() {
   }
 }
 
+// Error for invalid XY chain
+void processXYChainError(List<String> checked, List<String> input) {
+  String errorToken = input.isNotEmpty ? input.removeLast() : 'Missing';
+  String whiteSpace = ''.padLeft(input.join(' ').length);
+  if (RegExp(r"[a-f]").hasMatch(errorToken[0])) {
+    myPrint("\nError: ${errorToken} contains an invalid Y coordinate.\n");
+  } else {
+    myPrint("\nError: ${errorToken} contains an invalid X coordinate.\n");
+  }
+  printSyntaxError(input, errorToken, whiteSpace, "valid XY format");
+}
+
+// Error for invalid shape
+void reportShapeError(List<String> checked, List<String> input) {
+  String errorToken = input.isNotEmpty ? input.removeLast() : 'Missing';
+  myPrint(
+      "\nError: Shape '${errorToken}' is not valid (expected 'sqr' or 'tri').\n");
+}
+
+// Print syntax error
+void printSyntaxError(
+    List<String> input, String errorToken, String whiteSpace, String expected) {
+  myPrint("\nInput: ${input.join(' ')} $errorToken\n");
+  myPrint("$whiteSpace${'^' * errorToken.length}\n");
+  myPrint(
+      "Syntax Error: Expected \"$expected\", but found \"$errorToken\" instead.\n");
+}
+
+//parse tree section
+// Define a Node class for the parse tree
 class Node {
   String value;
   List<Node> children = [];
