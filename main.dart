@@ -46,8 +46,7 @@ void updateDerivationSteps(String target, String replacement) {
   if (lastIndex != -1) {
     String updatedStep = lastStep.replaceRange(
         lastIndex, lastIndex + target.length, replacement);
-    derivationSteps[derivationSteps.length - 1] =
-        updatedStep; // Update the last step
+    derivationSteps.add(updatedStep);
   }
 }
 
@@ -106,56 +105,45 @@ void displayGrammar() {
 List<String> derivationSteps = [];
 List<String> checkedList = [];
 
-bool processX(List<String> tokenList) {
+// Y then x
+bool processXY(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
   try {
-    // converts the last coordinate into its <x> its actual value
-    // tokenizes this last line
-    // calls the processy function
-    // removes the line from the tokenlist
-    // calls the processCoordinates function
+    String component = tokenList.removeLast();
+    if (RegExp(r"[0-9]").hasMatch(component)) {
+      if (r_y.hasMatch(component)) {
+        updateDerivationSteps("<y>", component);
+      } else {
+        throw ArgumentError("Expected [1-6] Recieved $component");
+      }
+    } else if (RegExp(r"[a-z]").hasMatch(component)) {
+      if (r_x.hasMatch(component)) {
+        updateDerivationSteps("<x>", component);
+      } else {
+        throw ArgumentError("I expexted [a-f] received $component");
+      }
+    }
+    return processXY(tokenList);
   } catch (e) {
     throw e;
   }
-  return true;
-}
-
-bool processY(List<String> tokenList) {
-  try {
-    // converts the last coordinate into its <x><y>
-    // tokenizes this last line
-    // calls the processX function
-    // removes the line from the tokenlist
-    // calls the function
-  } catch (e) {
-    throw e;
-  }
-  return true;
 }
 
 bool processCoordinates(List<String> tokenList) {
   if (tokenList.isEmpty) return false;
   try {
-    for (var coord in tokenList.reversed) {
-      if (r_single_coordinate.hasMatch(coord)) {
-        updateDerivationSteps("<xy>", "<x><y>");
-        List<String> components = coord.split("");
-        for (var component in components.reversed) {
-          if (r_y.hasMatch(component)) {
-            updateDerivationSteps("<y>", component);
-          } else if (r_x.hasMatch(component)) {
-            updateDerivationSteps("<x>", component);
-          } else {
-            throw ArgumentError("I love myself");
-          }
-        }
-      } else {
-        throw ArgumentError("alahu akhbar");
-      }
+    String coordinate = tokenList.removeLast();
+    if (r_single_coordinate.hasMatch(coordinate)) {
+      updateDerivationSteps("<xy>", "<x><y>");
+      List<String> components = coordinate.split("");
+      processXY(components);
+    } else {
+      throw ArgumentError("Error Procesing coordinate: $coordinate");
     }
+    return processCoordinates(tokenList);
   } catch (e) {
     throw e;
   }
-  return false;
 }
 
 bool processLines(List<String> tokenList) {
@@ -167,7 +155,7 @@ bool processLines(List<String> tokenList) {
     } else if (r_sqr.hasMatch(line)) {
       updateDerivationSteps("<line>", "sqr <xy>,<xy>");
     } else {
-      throw ArgumentError("Something went wrong");
+      throw ArgumentError("Error Processing: $line is not a valid shape");
     }
 
     Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
