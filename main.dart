@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+List<String> lines = [];
 // Regex
 // final r_halt = RegExp(r'^HALT$');
 // final r_on = RegExp(r"^ON");
@@ -12,14 +13,11 @@ import 'dart:io';
 // final r_y = RegExp(r"[1-6]");
 final r_sqr = RegExp(r'sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2})');
 final r_tri = RegExp(r"tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}");
-// final r_delim = RegExp(r"-");
+final r_delim = RegExp(r"-");
 
 final r_halt = RegExp(r'^HALT$');
 final r_on = RegExp(r"^ON");
-final r_off = RegExp(r"OFF$");
-final r_instructions = RegExp(
-    r'(?:-)?\s*(?:[a-zA-Z]{3}|ON|OFF)\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}|\bON\b|\bOFF\b');
-// final r_instructions = RegExp(
+final r_off = RegExp(r"OFF$"); // final r_instructions = RegExp(
 //     r'^\s*ON\s*(?:[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}(?:\s*-\s*[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2})*)?\s*OFF$');
 
 final r_line =
@@ -38,6 +36,19 @@ String replaceRightMost(String str, String target, String replacement) {
   if (lastIndex == -1)
     return str; // If target not found, return original string
   return str.replaceRange(lastIndex, lastIndex + target.length, replacement);
+}
+
+void updateDerivationSteps(String target, String replacement) {
+  if (derivationSteps.isEmpty) return; // Check if there are steps to update
+  String lastStep = derivationSteps.last; // Get the last derivation step
+  int lastIndex = lastStep.lastIndexOf(target);
+
+  if (lastIndex != -1) {
+    String updatedStep = lastStep.replaceRange(
+        lastIndex, lastIndex + target.length, replacement);
+    derivationSteps[derivationSteps.length - 1] =
+        updatedStep; // Update the last step
+  }
 }
 
 // Helper Function to print a message
@@ -93,6 +104,7 @@ void displayGrammar() {
 
 // List to hold the steps for derivation
 List<String> derivationSteps = [];
+List<String> checkedList = [];
 
 bool processX(List<String> tokenList) {
   try {
@@ -121,21 +133,17 @@ bool processY(List<String> tokenList) {
 }
 
 bool processCoordinates(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
   try {
-    if (tokenList.isEmpty) return false;
-
     for (var coord in tokenList.reversed) {
       if (r_single_coordinate.hasMatch(coord)) {
-        String lastStep = derivationSteps.last;
-        derivationSteps.add(replaceRightMost(lastStep, "<xy>", "<x><y>"));
+        updateDerivationSteps("<xy>", "<x><y>");
         List<String> components = coord.split("");
         for (var component in components.reversed) {
           if (r_y.hasMatch(component)) {
-            String lastStep = derivationSteps.last;
-            derivationSteps.add(replaceRightMost(lastStep, "<y>", component));
+            updateDerivationSteps("<y>", component);
           } else if (r_x.hasMatch(component)) {
-            String lastStep = derivationSteps.last;
-            derivationSteps.add(replaceRightMost(lastStep, "<x>", component));
+            updateDerivationSteps("<x>", component);
           } else {
             throw ArgumentError("I love myself");
           }
@@ -144,132 +152,108 @@ bool processCoordinates(List<String> tokenList) {
         throw ArgumentError("alahu akhbar");
       }
     }
-    // converts the last coordinate into its <x><y>
-    // tokenizes this last line
-    // calls the processy function
-    // removes the line from the tokenlist
-    // calls the processLinesFunction function
   } catch (e) {
     throw e;
   }
-  return true;
+  return false;
 }
 
 bool processLines(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
   try {
-    if (tokenList.isEmpty) return false;
-
-    for (var line in tokenList) {
-      List<String> cleanedTokensList = [];
-      String lastStep = derivationSteps.last;
-      if (r_tri.hasMatch(line)) {
-        derivationSteps
-            .add(replaceRightMost(lastStep, "<line>", "tri <xy>,<xy>,<xy>"));
-      } else if (r_sqr.hasMatch(line)) {
-        derivationSteps
-            .add(replaceRightMost(lastStep, "<line>", "sqr <xy>,<xy>"));
-      } else {
-        throw ArgumentError("Something went wrong");
-      }
-      Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
-      for (var match in matches) {
-        cleanedTokensList.add(match.group(0)!); // Add the matched <xy> value
-      }
-      processCoordinates(cleanedTokensList);
+    String line = tokenList.removeAt(0);
+    if (r_tri.hasMatch(line)) {
+      updateDerivationSteps("<line>", "tri <xy>,<xy>,<xy>");
+    } else if (r_sqr.hasMatch(line)) {
+      updateDerivationSteps("<line>", "sqr <xy>,<xy>");
+    } else {
+      throw ArgumentError("Something went wrong");
     }
+
+    Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
+    List<String> coordinatesList = [];
+    for (var match in matches) {
+      coordinatesList.add(match.group(0)!);
+    }
+    processCoordinates(coordinatesList);
+    return processLines(tokenList);
   } catch (e) {
     throw e;
   }
-  return true;
 }
 
-// accepts a token list of xyLines and deliiters
-// derives all instructions into lines first
-// upon completion or when no more additional instructions will remove all delimeters from the tokenlist and calls the process lines function
 bool processInstructions(List<String> tokenList) {
+  if (tokenList.isEmpty) return false;
   try {
-    List<String> cleanedTokensList = [];
-
-    for (var token in tokenList.reversed) {
-      String lastStep = derivationSteps.last;
-
-      if (token.contains('-')) {
-        // Split token by the delimiter '-' and process both parts
-        List<String> parts =
-            token.split('-').map((part) => part.trim()).toList();
-
-        // Validate both parts of the token (if applicable)
-        if (parts.length == 2 && r_line.hasMatch(parts[1])) {
-          derivationSteps.add(replaceRightMost(
-              lastStep, "<instructions>", "<line> - <instructions>"));
-          // derivationSteps.add(lastStep.replaceFirst(
-          //     "<instructions>", "<line> - <instructions>"));
-          cleanedTokensList.add(parts[1]);
-        } else {
-          throw FormatException("Invalid format in token: $token");
-        }
-      } else {
-        // If token doesn't have a delimiter, just process the line
-        if (r_line.hasMatch(token)) {
-          derivationSteps
-              .add(lastStep.replaceFirst("<instructions>", "<line>"));
-          cleanedTokensList.add(token);
-        } else {
-          throw FormatException("Invalid format in token: $token");
-        }
-      }
+    lines.add(tokenList.removeLast());
+    if (tokenList.isNotEmpty) {
+      updateDerivationSteps("<instructions>", "<line> - <instructions>");
+      return processInstructions(tokenList);
     }
-    processLines(cleanedTokensList);
-    return true;
+    updateDerivationSteps("<instructions>", "<line>");
+    return processLines(lines);
   } catch (e) {
-    throw FormatException("Error processing instructions: $e");
+    throw FormatException("Error processing instructions: ${e}");
   }
 }
 
+// The baddes bitch in the program
 bool attemptDerivation(String input) {
-  try {
-    input.trim();
-    // Error Correction
-    if (input.isEmpty) {
-      throw ArgumentError("Enter a sentence!");
-    } else if (!r_on.hasMatch(input)) {
-      throw ArgumentError("Sentence must start with 'ON'");
-    } else if (!r_off.hasMatch(input)) {
-      throw ArgumentError("Sentence must end with 'OFF'");
-    }
-    derivationSteps.clear();
+  // final r_instructions = RegExp(
+  //     r'(?:-)?\s*(?:[a-zA-Z]{3}|ON|OFF)\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}|\bON\b|\bOFF\b');
+  final r_instructions = RegExp(r"ON|OFF|([a-zA-Z]{3})\s+([a-zA-Z]\d+,?)+|-");
 
-    // Tokenize the string
+  final r_on = RegExp(r'\bON\b');
+  final r_off = RegExp(r'\bOFF\b');
+  derivationSteps.clear();
+  checkedList.clear();
+  lines.clear();
+  List<String> unrecognizedTokens = [];
+
+  try {
+    if (input.isEmpty) throw ArgumentError("Input cannot be empty.");
+
+    // Tokenize the string on nonterminals
     Iterable<RegExpMatch> matches = r_instructions.allMatches(input);
-    List<String> tokenList = matches
+    List<String> matchedTokens = matches
         .map((match) => match.group(0)!.trim())
         .where((element) => element.isNotEmpty)
         .toList();
 
-// If empty thhrow tha btich
-    if (tokenList.isEmpty) {
-      throw FormatException("No valid tokens found.");
-    }
-    // could have really just been a simple thing but no
-    String concatenatedResult = tokenList.first;
-    // Create new list that excludes "ON" and "OFF"
-    // I hate myself
-    List<String> middleTokens =
-        tokenList.where((i) => i != "ON" && i != "OFF").toList();
-
-    if (tokenList.every((token) => token == "ON" || token == "OFF")) {
-      throw FormatException("Invalid tokens found in the list.");
-    } else {
-      concatenatedResult += " <instructions>";
+    String filteredInput = input;
+    for (String token in matchedTokens) {
+      filteredInput = filteredInput.replaceFirst(token, '');
     }
 
-    concatenatedResult += " " + tokenList.last;
+    unrecognizedTokens = filteredInput
+        .split(RegExp(r'\s+')) // Split by whitespace
+        .where((token) => token.isNotEmpty) // Remove empty tokens
+        .toList();
 
-    derivationSteps.add(concatenatedResult);
-    if (!processInstructions(middleTokens)) {
-      return false;
+    if (unrecognizedTokens.isNotEmpty) {
+      throw FormatException(
+          "Unrecognized instruction(s): ${unrecognizedTokens.join(', ')}");
     }
-    return true;
+    if (matchedTokens.isEmpty) throw ArgumentError("Enter a proper Sentence!");
+    if (!r_on.hasMatch(matchedTokens.first)) {
+      throw ArgumentError("Sentence must start with 'ON'.");
+    }
+    if (!r_off.hasMatch(matchedTokens.last)) {
+      throw ArgumentError("Sentence must end with 'OFF'.");
+    }
+    checkedList.add(matchedTokens.removeAt(0));
+    checkedList.add(matchedTokens.removeLast());
+    // Remove the delimeters
+    matchedTokens.removeWhere((element) => r_delim.hasMatch(element));
+    if (matchedTokens.isEmpty) {
+      throw FormatException(
+          "Sentence must contain instructions between 'ON' and 'OFF'.");
+    }
+    // Begin the tracking of derivation Steps
+    derivationSteps.add("${checkedList[0]} <instructions> ${checkedList.last}");
+
+    // send only the shapes to process
+    return processInstructions(matchedTokens);
   } catch (e) {
     throw e;
   }
