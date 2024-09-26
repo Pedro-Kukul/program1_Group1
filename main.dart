@@ -124,9 +124,7 @@ bool processXY(List<String> tokenList) {
 }
 
 // recieves coordinaes for a shape, furthur derives them
-bool processCoordinates(
-  List<String> tokenList,
-) {
+bool processCoordinates(List<String> tokenList) {
   if (tokenList.isEmpty) return true;
   try {
     String coordinate = tokenList.removeLast();
@@ -144,28 +142,54 @@ bool processCoordinates(
   }
 }
 
-// recievs shapes with their cooredinates, send its coordinates to further derive
+// recieve shapes with their cooredinates, send its coordinates to further derive
+// Splits the line into shapes and coordinates shape + coordinates
+// sqr|tri and their coordinates <xy>,<xy> for sqr  and <xy>,<xy>,<xy> for tri.
+// Depending the shape the the coordinatesList should only be either 2 or 3 for sqr or tri
+// send the coordinatesList to process, all error checking for it should be done here
 bool processLines(List<String> tokenList) {
   if (tokenList.isEmpty) return true;
+
+  String line = tokenList.removeAt(0).trim();
   try {
-    String line = tokenList.removeAt(0);
+    // Remove and process the current line
+    List<String> coordinatesList = [];
+
+    // Determine if the line contains a square or triangle shape
     if (r_tri.hasMatch(line)) {
       updateDerivationSteps("<line>", "tri <xy>,<xy>,<xy>");
+      Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
+
+      // Ensure exactly 3 coordinates for a triangle
+      coordinatesList = matches.map((match) => match.group(0)!).toList();
+      if (coordinatesList.length != 3) {
+        throw ArgumentError(
+            "Error: Expected 3 coordinates for 'tri', but got ${coordinatesList.length} in $line");
+      }
     } else if (r_sqr.hasMatch(line)) {
       updateDerivationSteps("<line>", "sqr <xy>,<xy>");
+      Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
+
+      // Ensure exactly 2 coordinates for a square
+      coordinatesList = matches.map((match) => match.group(0)!).toList();
+      if (coordinatesList.length != 2) {
+        throw ArgumentError(
+            "Error: Expected 2 coordinates for 'sqr', but got ${coordinatesList.length} in $line");
+      }
     } else {
-      throw ArgumentError("Error Processing: $line is not a valid shape");
+      // If no valid shape is matched, throw an error
+      throw ArgumentError(
+          "Error Processing: '$line' is not a valid shape (expected 'tri' or 'sqr')");
     }
 
-    Iterable<RegExpMatch> matches = r_single_coordinate.allMatches(line);
-    List<String> coordinatesList = [];
-    for (var match in matches) {
-      coordinatesList.add(match.group(0)!);
-    }
+    // Process the coordinates list
     processCoordinates(coordinatesList);
+
+    // Recursively process the next line
     return processLines(tokenList);
   } catch (e) {
-    throw e;
+    // Provide more detailed error message including the offending line
+    throw "Error: $e occurred while processing line: $line";
   }
 }
 
@@ -234,7 +258,7 @@ bool attemptDerivation(String input) {
     // Begin the tracking of derivation Steps
     derivationSteps.add("${checkedList[0]} <instructions> ${checkedList.last}");
 
-    // send only the actual instructions to process
+    // send only the instructions (shape + coordinates) to process
     return processInstructions(matchedTokens);
   } catch (e) {
     throw e;
