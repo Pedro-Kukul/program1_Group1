@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-List<String> lines = [];
 final r_sqr = RegExp(r'sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2})');
 final r_tri = RegExp(r"tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}");
 final r_delim = RegExp(r"-");
@@ -29,9 +28,10 @@ List<List<String>> grammar = [
   ['<y>', '➝', '', '1 | 2 | 3 | 4 | 5 | 6 |']
 ];
 
-// List to hold the steps for derivation
+// Lists Used might refactor
 List<String> derivationSteps = [];
 List<String> checkedList = [];
+List<String> lines = [];
 
 /********************************************************************************************************************************************* */
 
@@ -123,6 +123,7 @@ bool processXY(List<String> tokenList) {
   return processXY(tokenList);
 }
 
+// recieves coordinaes for a shape, furthur derives them
 bool processCoordinates(
   List<String> tokenList,
 ) {
@@ -143,6 +144,7 @@ bool processCoordinates(
   }
 }
 
+// recievs shapes with their cooredinates, send its coordinates to further derive
 bool processLines(List<String> tokenList) {
   if (tokenList.isEmpty) return true;
   try {
@@ -167,6 +169,7 @@ bool processLines(List<String> tokenList) {
   }
 }
 
+// recieves instrcutions, sends them to derieve as lines furhter
 bool processInstructions(List<String> tokenList) {
   if (tokenList.isEmpty) return false;
   try {
@@ -370,46 +373,3 @@ void main() {
     }
   }
 }
-
-/**
- * INPUT = ON sqr a1,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <instructions> OFF
- * ON <line> - <instructions> OFF
- * ON <line> - <line> - <instructions> OFF
- * ON <line> - <line> - <line> - <instructions> OFF
- * ON <line> - <line> - <line> - <line> OFF
- * ON <line> - <line> - <line> - sqr <xy>,<xy> OFF
- * ON <line> - <line> - <line> - sqr <xy>,<x><y> OFF
- * ON <line> - <line> - <line> - sqr <xy>,<x>2 OFF
- * ON <line> - <line> - <line> - sqr <xy>,d2 OFF
- * ON <line> - <line> - <line> - sqr <x><y>,d2 OFF
- * ON <line> - <line> - <line> - sqr <x>1,d2 OFF
- * ON <line> - <line> - <line> - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<xy>,<xy> - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<xy>,<x><y> - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<xy>,<x>3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<xy>,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<x><y>,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,<x>2,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <xy>,c2,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <x><y>,c2,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri <x>1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - <line> - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<xy>,<xy> - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<xy>,<x><y> - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<xy>,<x>3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<xy>,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<x><y>,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,<x>2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <xy>,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <x><y>,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri <x>1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON <line> - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <xy>,<xy> - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <xy>,<x><y> - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <xy>,<x>2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <xy>,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <x><y>,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr <x>1,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- * ON sqr a1,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
- */
