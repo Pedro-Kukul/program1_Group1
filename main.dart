@@ -12,6 +12,7 @@ final r_line =
     RegExp(r'^(?:-)?[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}$');
 final r_shape = RegExp(
     r'\s*(?:tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}|sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}))');
+// Checks for a letter followed by a number
 final r_single_coordinate = RegExp(r'[a-z]\d+');
 final r_x = RegExp(r'[a-f]');
 final r_y = RegExp(r'[1-6]');
@@ -138,11 +139,6 @@ bool processCoordinates(List<String> tokenList) {
   return processCoordinates(tokenList);
 }
 
-// recieve shapes with their cooredinates, send its coordinates to further derive
-// Splits the line into shapes and coordinates shape + coordinates
-// sqr|tri and their coordinates <xy>,<xy> for sqr  and <xy>,<xy>,<xy> for tri.
-// Depending the shape the the coordinatesList should only be either 2 or 3 for sqr or tri
-// send the coordinatesList to process, all error checking for it should be done here
 bool processLines(List<String> tokenList) {
   if (tokenList.isEmpty) return true;
 
@@ -151,7 +147,6 @@ bool processLines(List<String> tokenList) {
 
   // Parse the line into components (shape and coordinates) Split by whitespace or commas
   List<String> lineComponents = line.split(RegExp(r"[\s,]+"));
-  lineComponents.forEach(print);
   // First part is the shape (e.g., "tri" or "sqr") IT WILL ALWAYS BE SHAPE BECAUSE OF PREVIOUS CORRECTIONS
   String shape = lineComponents[0];
   // Variable to hold the expected number of coordinates
@@ -256,42 +251,15 @@ bool attemptDerivation(String input) {
   }
 }
 
+// Function to format the derivation Steps
 void showDerivation() {
-  myPrint(
-      '${' '.padRight(5)} ${'<proc>'.padRight(15)} ${'➝'.padRight(15)} ${derivationSteps[0]}\n');
+  print(
+      '${' '.padRight(5)} ${'<proc>'.padRight(15)} ${'➝'.padRight(15)} ${derivationSteps[0]}');
   for (int i = 1; i < derivationSteps.length; i++) {
     String stepNumber = (i + 1).toString().padLeft(2, '0');
-    myPrint(
-        '${stepNumber.padRight(5)} ${' '.padRight(15)} ${'➝'.padRight(15)} ${derivationSteps[i]}\n');
+    print(
+        '${stepNumber.padRight(5)} ${' '.padRight(15)} ${'➝'.padRight(15)} ${derivationSteps[i]}');
   }
-}
-
-// Error for invalid XY chain
-void processXYChainError(List<String> checked, List<String> input) {
-  String errorToken = input.isNotEmpty ? input.removeLast() : 'Missing';
-  String whiteSpace = ''.padLeft(input.join(' ').length);
-  if (RegExp(r"[a-f]").hasMatch(errorToken[0])) {
-    myPrint("\nError: ${errorToken} contains an invalid Y coordinate.\n");
-  } else {
-    myPrint("\nError: ${errorToken} contains an invalid X coordinate.\n");
-  }
-  printSyntaxError(input, errorToken, whiteSpace, "valid XY format");
-}
-
-// Error for invalid shape
-void reportShapeError(List<String> checked, List<String> input) {
-  String errorToken = input.isNotEmpty ? input.removeLast() : 'Missing';
-  myPrint(
-      "\nError: Shape '${errorToken}' is not valid (expected 'sqr' or 'tri').\n");
-}
-
-// Print syntax error
-void printSyntaxError(
-    List<String> input, String errorToken, String whiteSpace, String expected) {
-  myPrint("\nInput: ${input.join(' ')} $errorToken\n");
-  myPrint("$whiteSpace${'^' * errorToken.length}\n");
-  myPrint(
-      "Syntax Error: Expected \"$expected\", but found \"$errorToken\" instead.\n");
 }
 
 // Function to draw the parse tree for the recognized string
