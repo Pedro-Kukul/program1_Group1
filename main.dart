@@ -285,116 +285,75 @@ void printSyntaxError(
       "Syntax Error: Expected \"$expected\", but found \"$errorToken\" instead.\n");
 }
 
-//parse tree section
-// Define a Node class for the parse tree
-class Node {
-  String value;
-  List<Node> children = [];
+// Function to draw the parse tree for the recognized string
+void drawParseTree(String input) {
+  print("Parse Tree:");
 
-  Node(this.value);
+  // Split the input string to separate ON, OFF, and the instructions
+  if (input.startsWith('ON') && input.endsWith('OFF')) {
+    print("<proc>");
+    print(" ├── ON");
 
-  void addChild(Node child) {
-    children.add(child);
+    // Remove "ON" and "OFF" to isolate the body
+    String body = input.substring(3, input.length - 3).trim();
+    drawInstructions(body);
+
+    print(" └── OFF");
+  } else {
+    print("Error: Invalid structure.");
   }
+}
 
-  // Print the parse tree recursively with lines going down
-  void printTree({String prefix = '', bool isLast = true}) {
-    // Print the current node value
-    print('${prefix}${value}');
+// Helper function to draw instructions
+void drawInstructions(String instructions) {
+  print(" ├── <body>");
+  print(" │    ├── <instructions>");
 
-    // Adjust the prefix for the next level of children
-    String newPrefix = prefix + (isLast ? '    ' : ' |  ');
+  // Split the instructions on " - " to handle multiple lines
+  List<String> lines = instructions.split(' - ');
 
-    // Print each child recursively
-    for (int i = 0; i < children.length; i++) {
-      bool lastChild = i == children.length - 1;
-      String childPrefix = newPrefix + (lastChild ? ' └── ' : ' ├── ');
+  for (int i = 0; i < lines.length; i++) {
+    drawLine(lines[i]);
 
-      children[i].printTree(prefix: childPrefix, isLast: lastChild);
+    // For the last line, don't print a '-' node
+    if (i < lines.length - 1) {
+      print(" │    ├── -");
     }
   }
 }
 
-// Function to build the parse tree for a derivation
-Node buildParseTree(List<String> tokenList) {
-  Node root = Node('<proc>');
+// Helper function to draw a single line (sqr or tri)
+void drawLine(String line) {
+  if (line.startsWith('sqr')) {
+    print(" │    ├── <line> (sqr)");
+    // Extract the coordinates
+    String coords = line.substring(4);
+    List<String> xy = coords.split(',');
 
-  // Add the ON and OFF tokens manually
-  Node instructionsNode = Node('<instructions>');
-  root.addChild(Node('ON'));
-  root.addChild(instructionsNode);
-  root.addChild(Node('OFF'));
+    drawXY(xy[0].trim(), 1); // First xy
+    drawXY(xy[1].trim(), 2); // Second xy
+  } else if (line.startsWith('tri')) {
+    print(" │    ├── <line> (tri)");
+    // Extract the coordinates
+    String coords = line.substring(4);
+    List<String> xy = coords.split(',');
 
-  // Recursively process the tokens to build the parse tree
-  processInstructionsForTree(tokenList, instructionsNode);
-
-  return root;
-}
-
-// Recursive function to process instructions for parse tree
-void processInstructionsForTree(List<String> tokenList, Node parentNode) {
-  if (tokenList.isEmpty) return;
-
-  if (tokenList.contains('-')) {
-    int index = tokenList.indexOf('-');
-    List<String> firstPart = tokenList.sublist(0, index);
-    List<String> secondPart = tokenList.sublist(index + 1);
-
-    // Create <line> - <instructions> structure
-    Node lineNode = Node('<line>');
-    parentNode.addChild(lineNode);
-    processLineForTree(firstPart, lineNode);
-
-    Node delimNode = Node('-');
-    parentNode.addChild(delimNode);
-
-    Node instructionsNode = Node('<instructions>');
-    parentNode.addChild(instructionsNode);
-    processInstructionsForTree(secondPart, instructionsNode);
+    drawXY(xy[0].trim(), 1); // First xy
+    drawXY(xy[1].trim(), 2); // Second xy
+    drawXY(xy[2].trim(), 3); // Third xy
   } else {
-    Node lineNode = Node('<line>');
-    parentNode.addChild(lineNode);
-    processLineForTree(tokenList, lineNode);
+    print("Error: Invalid line structure.");
   }
 }
 
-// Function to process a line for the parse tree
-void processLineForTree(List<String> tokenList, Node parentNode) {
-  if (tokenList.isEmpty) return;
+// Helper function to draw the <xy> for each coordinate
+void drawXY(String xy, int index) {
+  String x = xy[0];
+  String y = xy[1];
 
-  if (r_sqr.hasMatch(tokenList.first)) {
-    parentNode.addChild(Node('sqr'));
-    Node xyNode1 = Node(tokenList[1]); // First xy
-    parentNode.addChild(xyNode1);
-
-    Node xyNode2 = Node(tokenList[2]); // Second xy
-    parentNode.addChild(xyNode2);
-  } else if (r_tri.hasMatch(tokenList.first)) {
-    parentNode.addChild(Node('tri'));
-    Node xyNode1 = Node(tokenList[1]); // First xy
-    parentNode.addChild(xyNode1);
-
-    Node xyNode2 = Node(tokenList[2]); // Second xy
-    parentNode.addChild(xyNode2);
-
-    Node xyNode3 = Node(tokenList[3]); // Third xy
-    parentNode.addChild(xyNode3);
-  }
-}
-
-// Call this function to display the parse tree
-void showParseTree(String input) {
-  input = input.trim();
-  List<String> tokenList = input.split(RegExp(r"\s*[,]\s*|\s+"));
-
-  // Remove 'ON' and 'OFF'
-  tokenList.removeAt(0);
-  tokenList.removeLast();
-
-  // Build and print the parse tree
-  Node parseTree = buildParseTree(tokenList);
-  print("\nParse Tree:\n");
-  parseTree.printTree();
+  print(" │    │    ├── <xy> $index");
+  print(" │    │    │    ├── <x> $x");
+  print(" │    │    │    └── <y> $y");
 }
 
 // Main program loop
@@ -414,7 +373,7 @@ void main() {
         myInput("Press any key to continue?"); // Wait for user to proceed
         showDerivation();
         myInput("Press any key to continue?"); // Show derivation or parse tree
-        showParseTree(userInput);
+        drawParseTree(userInput);
       }
     } catch (e) {
       print(e);
@@ -423,7 +382,7 @@ void main() {
 }
 
 /**
- * INPUT = ON sqr a1,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
+ * INPUT = ON sqr a1,a2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 - tri c1,c2,c3 - sqr d1,d2 - tri b1,b2,b3 - tri c1,c2,c3 - sqr d1,d2 OFF
  * ON <instructions> OFF
  * ON <line> - <instructions> OFF
  * ON <line> - <line> - <instructions> OFF
