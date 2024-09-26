@@ -12,13 +12,13 @@ final r_line =
     RegExp(r'^(?:-)?[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}$');
 final r_shape = RegExp(
     r'\s*(?:tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}|sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}))');
-// Checks for a letter followed by a number
 final r_single_coordinate = RegExp(r'[a-z]\d+');
 final r_x = RegExp(r'[a-f]');
 final r_y = RegExp(r'[1-6]');
 
 /********************************************************************************************************************************************* */
-List<List<String>> grammar = [
+// Global List that contains the Grammar for the Application.
+final List<List<String>> grammar = [
   ['<proc>', '➝', '', 'ON <instructions> OFF'],
   ['<instructions>', '➝', '', '<line>'],
   ['', '', '|', '<line> - <instructions>'],
@@ -29,40 +29,30 @@ List<List<String>> grammar = [
   ['<y>', '➝', '', '1 | 2 | 3 | 4 | 5 | 6 |']
 ];
 
-// Lists Used might refactor
 List<String> derivationSteps = [];
 List<String> checkedList = [];
 List<String> lines = [];
 
 /********************************************************************************************************************************************* */
 
-// Function to add a derivation step
-// Paramaters are what to replace and what tozz
+// Function to add a derivation step | Paramaters are what to replace and what tozz
 void updateDerivationSteps(String target, String replacement) {
   // If this is empty then return since theres nothing to do
   if (derivationSteps.isEmpty) return;
-  // Last derivation step
-  String lastStep = derivationSteps.last;
-  // for searching the rightmost of the step
-  int lastIndex = lastStep.lastIndexOf(target);
+  String lastStep = derivationSteps.last; // Last derivation step
+  int lastIndex =
+      lastStep.lastIndexOf(target); // for searching the rightmost of the step
 
-  // Begins searching from right to left and replaces the rightmost target first.
   if (lastIndex != -1) {
+    // Begins searching from right to left and replaces the rightmost target first.
     derivationSteps.add(lastStep.replaceRange(
         lastIndex, lastIndex + target.length, replacement));
   }
 }
 
-// Helper Function to print a message
-// Could maybe remove this
-Future<void> myPrint(String output) async {
-  stdout.write(output);
-}
-
 // Helper function to recieve input
-// Could maybe remove this
 String? myInput(String prompt) {
-  myPrint("\n" + prompt);
+  print(prompt);
   return stdin.readLineSync(encoding: utf8);
 }
 
@@ -70,7 +60,6 @@ String? myInput(String prompt) {
 void printCharacters(String message, String symbol) {
   int totalColumns = stdout.terminalColumns;
   int symbolCount = totalColumns - message.length;
-
   if (symbolCount > 0) {
     print(message + symbol.padRight(symbolCount, symbol));
   }
@@ -78,12 +67,12 @@ void printCharacters(String message, String symbol) {
 
 // Check for HALT to terminate program additionally checks if the user misscapitalized the termination code
 bool checkHalt(String input) {
-  if (r_halt.hasMatch(input)) {
+  if (!r_halt.hasMatch(input))
     return true;
-  } else if (r_halt.hasMatch(input.toUpperCase())) {
+  else if (r_halt.hasMatch(input.toUpperCase()))
     throw "Syntax Error: Use 'HALT' to terminate the program.";
-  }
-  return false;
+  else
+    return false;
 }
 
 // Displays Grammar neatly
@@ -97,30 +86,21 @@ void displayGrammar() {
   printCharacters("", "-");
 }
 
-String ThrowSyntaxError(String expected, String error) {
-  return "Syntax Error: Expected $expected; but received $error at ${checkedList.last} instead";
-}
-
 /********************************************************************************************************************************************* */
 // Function to process the individual coordinates
 bool processXY(List<String> tokenList) {
   if (tokenList.isEmpty) return true;
   String component = tokenList.removeLast();
-  if (RegExp(r"[0-9]").hasMatch(component)) {
-    if (r_y.hasMatch(component)) {
-      updateDerivationSteps("<y>", component);
-    } else {
-      throw ThrowSyntaxError("1-6", component);
-    }
-  } else if (RegExp(r"[a-z]").hasMatch(component)) {
-    if (r_x.hasMatch(component)) {
-      updateDerivationSteps("<x>", component);
-    } else {
-      throw ThrowSyntaxError("a-z", component);
-    }
-  } else {
+  if (RegExp(r"[0-9]").hasMatch(component))
+    r_y.hasMatch(component)
+        ? updateDerivationSteps("<y>", component)
+        : throw ArgumentError(["Expeted1-6 recieved:  $component"], "Syntax");
+  else if (RegExp(r"[a-z]").hasMatch(component))
+    r_x.hasMatch(component)
+        ? updateDerivationSteps("<y>", component)
+        : throw ArgumentError(["Expeted a-f recieved:  $component"], "Syntax");
+  else
     throw "Unexpected component format: $component";
-  }
   return processXY(tokenList);
 }
 
