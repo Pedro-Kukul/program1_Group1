@@ -32,7 +32,7 @@ final List<List<String>> grammar = [
 ]; // Grammar List
 
 List<String> derivationSteps = []; // Tracking Derivation
-List<String> linesDerived = []; // For Line Processing under instructions
+List<String> linesDerived = []; // For Line deriveing under instructions
 
 /**
  * Helper Functions
@@ -90,7 +90,7 @@ void displayGrammar() {
  * Derivation Subprogram
  */
 // Derives a coordinate
-bool processXY(List<String> tokenList) {
+bool deriveXY(List<String> tokenList) {
   if (tokenList.isEmpty) return true; // return if no more tokens to derive
   // assigns and removes lastitem in the tokenList (starts from the last item and goes up)
   String component = tokenList.removeLast();
@@ -114,11 +114,11 @@ bool processXY(List<String> tokenList) {
     // unexpected errors
     throw "Unexpected component format: $component";
   }
-  return processXY(tokenList);
+  return deriveXY(tokenList);
 }
 
 // Receives coordinates, and for each pair, updates the derivation Steps
-bool processCoordinates(List<String> tokenList) {
+bool deriveCoordinates(List<String> tokenList) {
   if (tokenList.isEmpty) return true; // when empty done
   // assigns and removes the last item in the given token list (right to left)
   String coordinate = tokenList.removeLast();
@@ -128,18 +128,18 @@ bool processCoordinates(List<String> tokenList) {
     // Splits the coordinate into an x any y value
     List<String> components = coordinate.split("");
     // derives both coordinates
-    processXY(components);
+    deriveXY(components);
   } else {
     // throws error if found unexpected result
     throw ArgumentError(["Expected <x><y> received:  $coordinate"], "Syntax");
   }
-  // recursive function to process all items in the tokenlist
-  return processCoordinates(tokenList);
+  // recursive function to derive all items in the tokenlist
+  return deriveCoordinates(tokenList);
 }
 
 // Derives a Line
-bool processLines(List<String> tokenList) {
-  if (tokenList.isEmpty) return true; // no more tokens to process
+bool deriveLines(List<String> tokenList) {
+  if (tokenList.isEmpty) return true; // no more tokens to derive
   // assigns and removes the last lien in the tokenlist
   String line = tokenList.removeAt(0).trim();
 
@@ -172,26 +172,26 @@ bool processLines(List<String> tokenList) {
       "Error: Expected $shapeCoordinateLength coordinates for '$shape', but got ${coordinatesList.length} in $line"
     ], "syntax");
 
-  // Further process the coordinates list if valid
-  processCoordinates(coordinatesList);
+  // Further derive the coordinates list if valid
+  deriveCoordinates(coordinatesList);
 
-  // Recursively process the next line
-  return processLines(tokenList);
+  // Recursively derive the next line
+  return deriveLines(tokenList);
 }
 
 // Receives instructions, sends them to derive as lines further
-bool processInstructions(List<String> tokenList) {
-  // when instructions have been processed to liens in derivationSteps then stops
+bool deriveInstructions(List<String> tokenList) {
+  // when instructions have been deriveed to liens in derivationSteps then stops
   if (tokenList.isEmpty) return false;
   linesDerived.add(tokenList.removeLast());
   if (tokenList.isNotEmpty) {
     // If haven't reached last token in tokenlist
     updateDerivationSteps("<instructions>", "<line> - <instructions>");
-    return processInstructions(tokenList);
+    return deriveInstructions(tokenList);
   }
-  // no more instructions to process
+  // no more instructions to derive
   updateDerivationSteps("<instructions>", "<line>");
-  return processLines(linesDerived);
+  return deriveLines(linesDerived);
 }
 
 bool attemptDerivation(String input) {
@@ -233,21 +233,26 @@ bool attemptDerivation(String input) {
     } else {
       if (matchedTokens.first == "-") {
         throw FormatException(
-            "Invalid instruction format: The first token cannot be a delimiter.");
+            "Invalid instruction format: The first valid token cannot be a delimiter.");
       } else if (matchedTokens.last == "-") {
         throw FormatException(
-            "Invalid instruction format: The last token cannot be a delimiter.");
-      }
-      for (int i = 0; i < matchedTokens.length; i++) {
-        if (matchedTokens[i] == "-" && (i > 0 && matchedTokens[i - 1] == "-")) {
-          throw ArgumentError("Cannot have two consecutive '-'.");
+            "Invalid instruction format: The last valid token cannot be a delimiter.");
+      } else {
+        for (int i = 0; i < matchedTokens.length; i++) {
+          if (matchedTokens[i] == "-" &&
+              (i > 0 && matchedTokens[i - 1] == "-")) {
+            throw ArgumentError(
+                "Invalid instruction format: Cannot have two consecutive '-'.");
+          }
         }
       }
     }
+    // Remove Delimeters
+    matchedTokens.removeWhere((element) => RegExp(r'-').hasMatch(element));
 
     derivationSteps.add("ON <instructions> OFF");
-    // Process the valid instructions
-    return processInstructions(matchedTokens);
+    // derive the valid instructions
+    return deriveInstructions(matchedTokens);
   } catch (e) {
     throw e;
   }
