@@ -1,12 +1,8 @@
-/**
- * Necessary Imports
- */
+//Necessary Imports
 import 'dart:convert'; // Encoding
 import 'dart:io'; // I/O
 
-/**
- * Regex
- */
+//Regex
 final r_halt = RegExp(r'^HALT$'); // Termination
 final r_single_coordinate = RegExp(r'[a-z]\d+'); // XY
 final r_x = RegExp(r'[a-f]'); // X
@@ -16,10 +12,7 @@ final r_Line = RegExp(
 final r_Terminals = RegExp(
     r'([a-z]{3}) ([a-z]\d)(?:,([a-z]\d))*|ON|OFF|-'); // Lines, -, ON, OFF
 
-/**
- * Lists
- */
-
+//Lists
 final List<List<String>> grammar = [
   ['<proc>', '➝', '', 'ON <instructions> OFF'],
   ['<instructions>', '➝', '', '<line>'],
@@ -30,14 +23,10 @@ final List<List<String>> grammar = [
   ['<x>', '➝', '', 'a | b | c | d | e | f'],
   ['<y>', '➝', '', '1 | 2 | 3 | 4 | 5 | 6 |']
 ]; // Grammar List
-
 List<String> derivationSteps = []; // Tracking Derivation
-List<String> linesDerived = []; // For Line deriveing under instructions
+List<String> linesDerived = []; // For Line derivation after instructions
 
-/**
- * Helper Functions
- */
-
+//Helper Functions
 // Replaces the rightmost target in the derivationSteps List and adds a new list item.
 void updateDerivationSteps(String target, String replacement) {
   if (derivationSteps.isEmpty) return; // Return if empty
@@ -52,7 +41,7 @@ void updateDerivationSteps(String target, String replacement) {
 
 // Helper function to receive input
 String? myInput(String prompt) {
-  print(prompt);
+  stdout.write(prompt);
   return stdin.readLineSync(encoding: utf8);
 }
 
@@ -67,9 +56,9 @@ void printCharacters(String message, String symbol) {
 
 // Checks for termination of the program
 bool checkHalt(String input) {
-  if (r_halt.hasMatch(input))
+  if (r_halt.hasMatch(input)) {
     return true;
-  else if (r_halt.hasMatch(input.toUpperCase()))
+  } else if (r_halt.hasMatch(input.toUpperCase()))
     throw "Syntax Error: Use 'HALT' to terminate the program.";
   else
     return false;
@@ -86,9 +75,7 @@ void displayGrammar() {
   printCharacters("", "-");
 }
 
-/**
- * Derivation Subprogram
- */
+//Derivation Subprogram
 // Derives a coordinate
 bool deriveXY(List<String> tokenList) {
   if (tokenList.isEmpty) return true; // return if no more tokens to derive
@@ -142,46 +129,37 @@ bool deriveLines(List<String> tokenList) {
   if (tokenList.isEmpty) return true; // no more tokens to derive
   // assigns and removes the last lien in the tokenlist
   String line = tokenList.removeAt(0).trim();
-
   // Parse the line into components (shape and coordinates) Split by whitespace or commas (so the result would be individual coordinates and the shape)
   List<String> lineComponents = line.split(RegExp(r"[\s,]+"));
   // First part is the shape (e.g., "tri" or "sqr") IT WILL ALWAYS BE SHAPE BECAUSE OF PREVIOUS CORRECTIONS
-  String shape = lineComponents[0];
-  // Variable to hold the expected number of coordinates
-  int shapeCoordinateLength;
-
-  // Determine the expected number of coordinates based on the shape
+  String shape =
+      lineComponents[0]; // Variable to hold the expected number of coordinates
+  int shapeCoordinateLength; // Determine the expected number of coordinates based on the shape
   if (RegExp(r"tri").hasMatch(shape.trim())) {
     shapeCoordinateLength = 3; // Triangle needs 3 coordinates
     updateDerivationSteps("<line>", "tri <xy>,<xy>,<xy>");
   } else if (RegExp(r"sqr").hasMatch(shape.trim())) {
     shapeCoordinateLength = 2; // Square needs 2 coordinates
     updateDerivationSteps("<line>", "sqr <xy>,<xy>");
-  } else
-    // Unexpected Shape
+  } else // Unexpected Shape
     throw ArgumentError(
         ["Error: '$line' is not a valid shape (expected 'tri' or 'sqr')"],
         "Syntax");
-
   // Validate that the number of coordinates matches the expected shape
   List<String> coordinatesList = lineComponents.sublist(1);
   // All components after shape are coordinates
   if (coordinatesList.length != shapeCoordinateLength)
-    // Throw error if got incorrect number of coordinates
     throw ArgumentError([
-      "Error: Expected $shapeCoordinateLength coordinates for '$shape', but got ${coordinatesList.length} in $line"
+      // Throw error if got incorrect number of coordinates
+      "Error: Expected $shapeCoordinateLength valid <xy> for '$shape', but got ${coordinatesList.length} valid <xy> in $line"
     ], "syntax");
-
-  // Further derive the coordinates list if valid
-  deriveCoordinates(coordinatesList);
-
-  // Recursively derive the next line
-  return deriveLines(tokenList);
+  deriveCoordinates(coordinatesList); // Derive the coordinates list if notempty
+  return deriveLines(tokenList); // Recursively derive the next line
 }
 
 // Receives instructions, sends them to derive as lines further
 bool deriveInstructions(List<String> tokenList) {
-  // when instructions have been deriveed to liens in derivationSteps then stops
+  // when instructions have been derived to lines in derivationSteps then stops
   if (tokenList.isEmpty) return false;
   linesDerived.add(tokenList.removeLast());
   if (tokenList.isNotEmpty) {
@@ -202,14 +180,12 @@ bool attemptDerivation(String input) {
     if (input.isEmpty) {
       throw ArgumentError("Input cannot be empty.");
     }
-
     // Tokenize the string on terminals (lines, -, ON, OFF)
     Iterable<RegExpMatch> matches = r_Terminals.allMatches(input);
     List<String> matchedTokens = matches
         .map((match) => match.group(0)!.trim())
         .where((element) => element.isNotEmpty)
         .toList();
-
     // If no structured sentence that uses the BNF
     if (matchedTokens.isEmpty) {
       throw ArgumentError("Enter a valid sentence!");
@@ -222,23 +198,24 @@ bool attemptDerivation(String input) {
     if (!matchedTokens.last.contains('OFF')) {
       throw ArgumentError("Sentence must end with 'OFF'.");
     }
-
     matchedTokens.removeAt(0); // Remove 'ON'
     matchedTokens.removeLast(); // Remove 'OFF'
-
     // Check for instructions between ON and OFF and for extra delimiters
     if (matchedTokens.isEmpty) {
       throw FormatException(
           "Sentence must contain valid instructions between 'ON' and 'OFF'.");
     } else {
       if (matchedTokens.first == "-") {
+        // first token a delimeter
         throw FormatException(
             "Invalid instruction format: The first valid token cannot be a delimiter.");
       } else if (matchedTokens.last == "-") {
+        // last token a delimeter
         throw FormatException(
             "Invalid instruction format: The last valid token cannot be a delimiter.");
       } else {
         for (int i = 0; i < matchedTokens.length; i++) {
+          // check for consecutive delimeters
           if (matchedTokens[i] == "-" &&
               (i > 0 && matchedTokens[i - 1] == "-")) {
             throw ArgumentError(
@@ -249,7 +226,6 @@ bool attemptDerivation(String input) {
     }
     // Remove Delimeters
     matchedTokens.removeWhere((element) => RegExp(r'-').hasMatch(element));
-
     derivationSteps.add("ON <instructions> OFF");
     // derive the valid instructions
     return deriveInstructions(matchedTokens);
@@ -269,23 +245,17 @@ void showDerivation() {
   }
 }
 
-/**
- * Parse Tree
- */
-
+// Parse Tree
 // Function to draw the parse tree for the recognized string
 void drawParseTree(String input) {
   print("Parse Tree:");
-
   // Split the input string to separate ON, OFF, and the instructions
   if (input.startsWith('ON') && input.endsWith('OFF')) {
     print("<proc>");
     print(" ├── ON");
-
     // Remove "ON" and "OFF" to isolate the body
     String body = input.substring(3, input.length - 3).trim();
     drawInstructions(body);
-
     print(" └── OFF");
   } else
     print("Error: Invalid structure.");
@@ -295,7 +265,6 @@ void drawParseTree(String input) {
 void drawInstructions(String instructions) {
   print(" ├── <body>");
   print(" │    ├── <instructions>");
-
   // Split the instructions on " - " to handle multiple lines
   List<String> lines = instructions.split(' - ');
   for (int i = 0; i < lines.length; i++) {
@@ -312,7 +281,6 @@ void drawLine(String line) {
     // Extract the coordinates
     String coords = line.substring(4);
     List<String> xy = coords.split(',');
-
     drawXY(xy[0].trim(), 1); // First xy
     drawXY(xy[1].trim(), 2); // Second xy
   } else if (line.startsWith('tri')) {
@@ -320,7 +288,6 @@ void drawLine(String line) {
     // Extract the coordinates
     String coords = line.substring(4);
     List<String> xy = coords.split(',');
-
     drawXY(xy[0].trim(), 1); // First xy
     drawXY(xy[1].trim(), 2); // Second xy
     drawXY(xy[2].trim(), 3); // Third xy
@@ -332,7 +299,6 @@ void drawLine(String line) {
 void drawXY(String xy, int index) {
   String x = xy[0];
   String y = xy[1];
-
   print(" │    │    ├── <xy> $index");
   print(" │    │    │    ├── <x> $x");
   print(" │    │    │    └── <y> $y");
@@ -345,18 +311,17 @@ void main() {
   while (true) {
     try {
       displayGrammar();
-      String userInput = myInput("Enter your sentence: ") ?? "";
+      String userInput = myInput("Enter your sentence:  ") ?? "";
 
-      if (checkHalt(userInput)) {
-        printCharacters("Terminating Program", ".");
-        break;
-      } else {
-        // Perform derivation and parse tree steps if "HALT" is not entered
+      if (!checkHalt(userInput)) {
         if (attemptDerivation(userInput)) {
           showDerivation();
-          myInput("Press any enter to continue?");
+          myInput("Press any enter to continue: ");
           drawParseTree(userInput);
         }
+      } else {
+        printCharacters("\nTerminating Program", "-");
+        break;
       }
     } catch (e) {
       print(e);
