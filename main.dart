@@ -2,143 +2,140 @@ import 'dart:convert';
 import 'dart:io';
 
 List<String> lines = [];
-// Regex
-// final r_halt = RegExp(r'^HALT$');
-// final r_on = RegExp(r"^ON");
-// final r_off = RegExp(r"OFF$");
-
-// final r_shape = RegExp(r"sqr|tri");
-// final r_coord = RegExp(r"([a-f][1-6]),([a-f][1-6])(,([a-f][1-6]))?");
-// final r_x = RegExp(r"[a-f]");
-// final r_y = RegExp(r"[1-6]");
 final r_sqr = RegExp(r'sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2})');
 final r_tri = RegExp(r"tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}");
 final r_delim = RegExp(r"-");
-
+final r_instructions = RegExp(r"ON|OFF|([a-zA-Z]{3})\s+([a-zA-Z]\d+,?)+|-");
 final r_halt = RegExp(r'^HALT$');
 final r_on = RegExp(r"^ON");
-final r_off = RegExp(r"OFF$"); // final r_instructions = RegExp(
-//     r'^\s*ON\s*(?:[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}(?:\s*-\s*[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2})*)?\s*OFF$');
-
+final r_off = RegExp(r"OFF$");
 final r_line =
     RegExp(r'^(?:-)?[a-zA-Z]{3}\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}$');
-
 final r_shape = RegExp(
     r'\s*(?:tri\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){2}|sqr\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}))');
-
 final r_single_coordinate = RegExp(r'[a-z]\d+');
 final r_x = RegExp(r'[a-f]');
 final r_y = RegExp(r'[1-6]');
 
-// Function to replace the rightmost occurrence of a target substring
-String replaceRightMost(String str, String target, String replacement) {
-  int lastIndex = str.lastIndexOf(target);
-  if (lastIndex == -1)
-    return str; // If target not found, return original string
-  return str.replaceRange(lastIndex, lastIndex + target.length, replacement);
-}
-
-void updateDerivationSteps(String target, String replacement) {
-  if (derivationSteps.isEmpty) return; // Check if there are steps to update
-  String lastStep = derivationSteps.last; // Get the last derivation step
-  int lastIndex = lastStep.lastIndexOf(target);
-
-  if (lastIndex != -1) {
-    String updatedStep = lastStep.replaceRange(
-        lastIndex, lastIndex + target.length, replacement);
-    derivationSteps.add(updatedStep);
-  }
-}
-
-// Helper Function to print a message
-Future<void> myPrint(String output) async {
-  stdout.write(output);
-}
-
-// Helper function to recieve input
-String? myInput(String prompt) {
-  myPrint("\n" + prompt);
-  return stdin.readLineSync(encoding: utf8);
-}
-
-// Helper function to print a line of characters
-void printCharacters(String message, String symbol) {
-  int totalColumns = stdout.terminalColumns;
-  int symbolCount = totalColumns - message.length;
-
-  if (symbolCount > 0) {
-    print("\n" + message + symbol.padRight(symbolCount, symbol));
-  }
-}
-
-// Check for HALT to terminate program
-bool checkHalt(String input) {
-  if (r_halt.hasMatch(input)) {
-    return true;
-  } else if (r_halt.hasMatch(input.toUpperCase())) {
-    // Input matches 'HALT' in any case (e.g., halt, Halt, hALt)
-    throw ArgumentError("Did you mean HALT?");
-  }
-  return false;
-}
-
-// Function to display the grammar
-void displayGrammar() {
-  List<List<String>> grammar = [
-    ['<proc>', '➝', '', 'ON <instructions> OFF'],
-    ['<instructions>', '➝', '', '<line>'],
-    ['', '', '|', '<line> - <instructions>'],
-    ['<line>', '➝', '', 'sqr <xy>,<xy>'],
-    ['', '', '|', 'tri <xy>,<xy>,<xy>'],
-    ['<xy>', '➝', '', '<x><y>'],
-    ['<x>', '➝', '', 'a | b | c | d | e | f'],
-    ['<y>', '➝', '', '1 | 2 | 3 | 4 | 5 | 6 |']
-  ];
-  print("Grammar:");
-  for (var line in grammar) {
-    print(
-        '${line[0].padRight(15)} ${line[1].padRight(10)} ${line[2].padRight(1)} ${line[3]}');
-  }
-}
+/********************************************************************************************************************************************* */
+List<List<String>> grammar = [
+  ['<proc>', '➝', '', 'ON <instructions> OFF'],
+  ['<instructions>', '➝', '', '<line>'],
+  ['', '', '|', '<line> - <instructions>'],
+  ['<line>', '➝', '', 'sqr <xy>,<xy>'],
+  ['', '', '|', 'tri <xy>,<xy>,<xy>'],
+  ['<xy>', '➝', '', '<x><y>'],
+  ['<x>', '➝', '', 'a | b | c | d | e | f'],
+  ['<y>', '➝', '', '1 | 2 | 3 | 4 | 5 | 6 |']
+];
 
 // List to hold the steps for derivation
 List<String> derivationSteps = [];
 List<String> checkedList = [];
 
-// Y then x
-bool processXY(List<String> tokenList) {
-  if (tokenList.isEmpty) return false;
-  try {
-    String component = tokenList.removeLast();
-    if (RegExp(r"[0-9]").hasMatch(component)) {
-      if (r_y.hasMatch(component)) {
-        updateDerivationSteps("<y>", component);
-      } else {
-        throw ArgumentError("Expected [1-6] Recieved $component");
-      }
-    } else if (RegExp(r"[a-z]").hasMatch(component)) {
-      if (r_x.hasMatch(component)) {
-        updateDerivationSteps("<x>", component);
-      } else {
-        throw ArgumentError("I expexted [a-f] received $component");
-      }
-    }
-    return processXY(tokenList);
-  } catch (e) {
-    throw e;
+/********************************************************************************************************************************************* */
+
+// Function to add a derivation step
+// Paramaters are what to replace and what tozz
+void updateDerivationSteps(String target, String replacement) {
+  // If this is empty then return since theres nothing to do
+  if (derivationSteps.isEmpty) return;
+  // Last derivation step
+  String lastStep = derivationSteps.last;
+  // for searching the rightmost of the step
+  int lastIndex = lastStep.lastIndexOf(target);
+
+  // Begins searching from right to left and replaces the rightmost target first.
+  if (lastIndex != -1) {
+    derivationSteps.add(lastStep.replaceRange(
+        lastIndex, lastIndex + target.length, replacement));
   }
 }
 
-bool processCoordinates(List<String> tokenList) {
-  if (tokenList.isEmpty) return false;
+// Helper Function to print a message
+// Could maybe remove this
+Future<void> myPrint(String output) async {
+  stdout.write(output);
+}
+
+// Helper function to recieve input
+// Could maybe remove this
+String? myInput(String prompt) {
+  myPrint("\n" + prompt);
+  return stdin.readLineSync(encoding: utf8);
+}
+
+// Helper function to print a line of characters with an optional message
+void printCharacters(String message, String symbol) {
+  int totalColumns = stdout.terminalColumns;
+  int symbolCount = totalColumns - message.length;
+
+  if (symbolCount > 0) {
+    print(message + symbol.padRight(symbolCount, symbol));
+  }
+}
+
+// Check for HALT to terminate program additionally checks if the user misscapitalized the termination code
+bool checkHalt(String input) {
+  if (r_halt.hasMatch(input)) {
+    return true;
+  } else if (r_halt.hasMatch(input.toUpperCase())) {
+    throw "Syntax Error: Use 'HALT' to terminate the program.";
+  }
+  return false;
+}
+
+// Displays Grammar neatly
+void displayGrammar() {
+  printCharacters("\n", "-");
+  print("Grammar:");
+  for (var line in grammar) {
+    print(
+        '${line[0].padRight(15)} ${line[1].padRight(10)} ${line[2].padRight(1)} ${line[3]}');
+  }
+  printCharacters("", "-");
+}
+
+String ThrowSyntaxError(String expected, String error) {
+  return "Syntax Error: Expected $expected; but received $error at ${checkedList.last} instead";
+}
+
+/********************************************************************************************************************************************* */
+// Function to process the individual coordinates
+bool processXY(List<String> tokenList) {
+  if (tokenList.isEmpty) return true;
+  String component = tokenList.removeLast();
+  if (RegExp(r"[0-9]").hasMatch(component)) {
+    if (r_y.hasMatch(component)) {
+      updateDerivationSteps("<y>", component);
+    } else {
+      throw ThrowSyntaxError("1-6", component);
+    }
+  } else if (RegExp(r"[a-z]").hasMatch(component)) {
+    if (r_x.hasMatch(component)) {
+      updateDerivationSteps("<x>", component);
+    } else {
+      throw ThrowSyntaxError("a-z", component);
+    }
+  } else {
+    throw "Unexpected component format: $component";
+  }
+  return processXY(tokenList);
+}
+
+bool processCoordinates(
+  List<String> tokenList,
+) {
+  if (tokenList.isEmpty) return true;
   try {
     String coordinate = tokenList.removeLast();
+    checkedList.add(coordinate);
     if (r_single_coordinate.hasMatch(coordinate)) {
       updateDerivationSteps("<xy>", "<x><y>");
       List<String> components = coordinate.split("");
       processXY(components);
     } else {
-      throw ArgumentError("Error Procesing coordinate: $coordinate");
+      ThrowSyntaxError("<xy>", coordinate);
     }
     return processCoordinates(tokenList);
   } catch (e) {
@@ -147,7 +144,7 @@ bool processCoordinates(List<String> tokenList) {
 }
 
 bool processLines(List<String> tokenList) {
-  if (tokenList.isEmpty) return false;
+  if (tokenList.isEmpty) return true;
   try {
     String line = tokenList.removeAt(0);
     if (r_tri.hasMatch(line)) {
@@ -181,18 +178,12 @@ bool processInstructions(List<String> tokenList) {
     updateDerivationSteps("<instructions>", "<line>");
     return processLines(lines);
   } catch (e) {
-    throw FormatException("Error processing instructions: ${e}");
+    throw ThrowSyntaxError("a proper instructor", "$e");
   }
 }
 
-// The baddes bitch in the program
+// attempts derivaiton
 bool attemptDerivation(String input) {
-  // final r_instructions = RegExp(
-  //     r'(?:-)?\s*(?:[a-zA-Z]{3}|ON|OFF)\s+[a-z]+\d{1,2}(?:,[a-z]+\d{1,2}){1,2}|\bON\b|\bOFF\b');
-  final r_instructions = RegExp(r"ON|OFF|([a-zA-Z]{3})\s+([a-zA-Z]\d+,?)+|-");
-
-  final r_on = RegExp(r'\bON\b');
-  final r_off = RegExp(r'\bOFF\b');
   derivationSteps.clear();
   checkedList.clear();
   lines.clear();
@@ -240,7 +231,7 @@ bool attemptDerivation(String input) {
     // Begin the tracking of derivation Steps
     derivationSteps.add("${checkedList[0]} <instructions> ${checkedList.last}");
 
-    // send only the shapes to process
+    // send only the actual instructions to process
     return processInstructions(matchedTokens);
   } catch (e) {
     throw e;
@@ -360,7 +351,6 @@ void drawXY(String xy, int index) {
 void main() {
   while (true) {
     try {
-      printCharacters("", "-");
       displayGrammar();
       String userInput = myInput("Enter your sentence: ") ?? "";
 
