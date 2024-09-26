@@ -195,7 +195,21 @@ bool processInstructions(List<String> tokenList) {
   }
 }
 
-// attempts derivaiton
+// Main Subprogram to Attempt Derivation
+// Retrieves string, trims it and parses it for each blank space into a List.
+// Clears derivationSteps list which to renew it for each derivation.
+// Errors to be encountered:
+//      If the string is empty
+//      "ON" Not Found at the Beginning
+//      "OFF" Not Found at the END
+//      Invalid Instructions (its not a line) or (multiple line are encountered but the delimter is misplaced) (Delimeters are "-")
+// It should show:
+//      Where the error was
+//      Unrecognized items in the Sentence
+// After checking for errors, will remove the first and last items from the list which are "ON" and "OFF"
+// It will remove delimeters since the check for delimeters will already have been done
+// It then concatenates the remaining items from the tokenList by (shape + coordinate) wher shape is a 3 letter word and coordinate is a letter+shape that appear many times and are separated by commas. e.g (tri a3,a3,a3, sqr a3,a3,a3,a3,a3, cir j3,j3,m3,m3,m3, put a1)
+// After cleaning the token list, it sends it to ProcessInstructions which will handle the rest of the derivation.
 bool attemptDerivation(String input) {
   derivationSteps.clear();
   checkedList.clear();
